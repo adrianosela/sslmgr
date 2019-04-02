@@ -42,7 +42,7 @@ func NewSecureServer(c ServerConfig) *SecureServer {
 	if httpsPort == "" || !strings.HasPrefix(httpsPort, ":") {
 		httpsPort = ":443"
 	}
-	httpPort := c.HTTPSPort
+	httpPort := c.HTTPPort
 	if httpPort == "" || !strings.HasPrefix(httpPort, ":") {
 		httpPort = ":80"
 	}
@@ -71,6 +71,7 @@ func (ss *SecureServer) ListenAndServe() {
 		ss.server.Addr = ss.httpsPort
 		ss.server.TLSConfig = &tls.Config{GetCertificate: ss.certMgr.GetCertificate}
 		go func() {
+			log.Printf("[sslmgr] serving https at %s", ss.httpsPort)
 			err := ss.server.ListenAndServeTLS("", "")
 			if err != nil {
 				log.Fatalf("ListendAndServeTLS() failed with %s", err)
@@ -82,6 +83,7 @@ func (ss *SecureServer) ListenAndServe() {
 		time.Sleep(time.Millisecond * 50)
 	}
 	ss.server.Addr = ss.httpPort
+	log.Printf("[sslmgr] serving http at %s", ss.httpPort)
 	err := ss.server.ListenAndServe()
 	if err != nil {
 		log.Fatalf("ListenAndServe() failed with %s", err)
