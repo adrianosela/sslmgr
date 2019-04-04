@@ -17,6 +17,8 @@ ss := sslmgr.NewSecureServer(sslmgr.ServerConfig{
 ss.ListenAndServe()
 ```
 
+**Note:** This option uses the file system as the certificate cache. If your use case does not have a persistent file system, you should provide a value for CertCache in the [ServerConfig](https://godoc.org/github.com/adrianosela/sslmgr#ServerConfig) as shown below.
+
 
 #### With Optional Values:
 
