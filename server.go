@@ -26,7 +26,7 @@ type SecureServer struct {
 
 // ServerConfig is the configuration type for a SecureServer
 type ServerConfig struct {
-	// Mandatory Fields
+	// Required Fields
 	Hostnames []string
 	Handler   http.Handler
 	// Optional Fields
