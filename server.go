@@ -50,6 +50,7 @@ var (
 
 // NewSecureServer initializes a new secure server
 func NewSecureServer(c ServerConfig) (*SecureServer, error) {
+	// check required fields
 	if len(c.Hostnames) < 1 {
 		return nil, ErrNoHostname
 	}
@@ -57,54 +58,54 @@ func NewSecureServer(c ServerConfig) (*SecureServer, error) {
 		return nil, ErrNoHandler
 	}
 	// cache implementation cant be empty
-	cache := c.CertCache
-	if cache == nil {
-		cache = autocert.DirCache(".")
+	if c.CertCache == nil {
+		c.CertCache = autocert.DirCache(".")
 	}
 	// port definitions cant be empty
-	httpsPort := c.HTTPSPort
-	if httpsPort == "" || !strings.HasPrefix(httpsPort, ":") {
-		httpsPort = ":443"
+	if c.HTTPSPort == "" || !strings.HasPrefix(c.HTTPSPort, ":") {
+		c.HTTPSPort = ":443"
 	}
-	httpPort := c.HTTPPort
-	if httpPort == "" || !strings.HasPrefix(httpPort, ":") {
-		httpPort = ":80"
+	if c.HTTPPort == "" || !strings.HasPrefix(c.HTTPPort, ":") {
+		c.HTTPPort = ":80"
 	}
-	readTimeout := c.ReadTimeout
-	if readTimeout == time.Duration(0) {
-		readTimeout = 5 * time.Second
+	// sensible timeouts
+	if c.ReadTimeout == time.Duration(0) {
+		c.ReadTimeout = 5 * time.Second
 	}
-	writeTimeout := c.WriteTimeout
-	if writeTimeout == time.Duration(0) {
-		writeTimeout = 5 * time.Second
+	if c.WriteTimeout == time.Duration(0) {
+		c.WriteTimeout = 5 * time.Second
 	}
-	idleTimeout := c.IdleTimeout
-	if idleTimeout == time.Duration(0) {
-		idleTimeout = 5 * 25
+	if c.IdleTimeout == time.Duration(0) {
+		c.IdleTimeout = 5 * 25
 	}
-
+	// serve SSL by default
+	if c.ServeSSLFunc == nil {
+		c.ServeSSLFunc = func() bool {
+			return true
+		}
+	}
+	// populate new SecureServer
 	return &SecureServer{
 		server: &http.Server{
-			ReadTimeout:  readTimeout,
-			WriteTimeout: writeTimeout,
-			IdleTimeout:  idleTimeout,
+			ReadTimeout:  c.ReadTimeout,
+			WriteTimeout: c.WriteTimeout,
+			IdleTimeout:  c.IdleTimeout,
 			Handler:      c.Handler,
 		},
 		certMgr: &autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(c.Hostnames...),
-			Cache:      cache,
+			Cache:      c.CertCache,
 		},
 		serveSSLFunc: c.ServeSSLFunc,
-		httpPort:     httpPort,
-		httpsPort:    httpsPort,
+		httpPort:     c.HTTPPort,
+		httpsPort:    c.HTTPSPort,
 	}, nil
 }
 
 // ListenAndServe starts the secure server
 func (ss *SecureServer) ListenAndServe() {
-	// serve HTTPS by default i.e. serveSSLFunc not provided
-	if ss.serveSSLFunc == nil || ss.serveSSLFunc() {
+	if ss.serveSSLFunc() {
 		ss.server.Addr = ss.httpsPort
 		ss.server.TLSConfig = &tls.Config{GetCertificate: ss.certMgr.GetCertificate}
 		go func() {
