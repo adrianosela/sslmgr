@@ -1,11 +1,15 @@
 package sslmgr
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"golang.org/x/crypto/acme/autocert"
@@ -14,14 +18,16 @@ import (
 // SecureServer is a server which abstracts away acme/autocert's
 // certificate manager
 type SecureServer struct {
-	server       *http.Server
-	certMgr      *autocert.Manager
-	serveSSLFunc func() bool
-	httpsPort    string
-	httpPort     string
-	readTimeout  time.Duration
-	writeTimeout time.Duration
-	idleTimeout  time.Duration
+	server                     *http.Server
+	certMgr                    *autocert.Manager
+	serveSSLFunc               func() bool
+	httpsPort                  string
+	httpPort                   string
+	readTimeout                time.Duration
+	writeTimeout               time.Duration
+	idleTimeout                time.Duration
+	gracefulnessTimeout        time.Duration
+	gracefulShutdownErrHandler func(error)
 }
 
 // ServerConfig is the configuration type for a SecureServer
@@ -30,13 +36,15 @@ type ServerConfig struct {
 	Hostnames []string
 	Handler   http.Handler
 	// Optional Fields
-	ServeSSLFunc func() bool
-	CertCache    autocert.Cache
-	HTTPSPort    string
-	HTTPPort     string
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	IdleTimeout  time.Duration
+	ServeSSLFunc               func() bool
+	CertCache                  autocert.Cache
+	HTTPSPort                  string
+	HTTPPort                   string
+	ReadTimeout                time.Duration
+	WriteTimeout               time.Duration
+	IdleTimeout                time.Duration
+	GracefulnessTimeout        time.Duration
+	GracefulShutdownErrHandler func(error)
 }
 
 var (
@@ -76,13 +84,20 @@ func NewSecureServer(c ServerConfig) (*SecureServer, error) {
 		c.WriteTimeout = 5 * time.Second
 	}
 	if c.IdleTimeout == time.Duration(0) {
-		c.IdleTimeout = 5 * 25
+		c.IdleTimeout = 25 * time.Second
+	}
+	if c.GracefulnessTimeout == time.Duration(0) {
+		c.GracefulnessTimeout = 5 * time.Second
 	}
 	// serve SSL by default
 	if c.ServeSSLFunc == nil {
 		c.ServeSSLFunc = func() bool {
 			return true
 		}
+	}
+	// simply log failure error if gradeful shutdown fails
+	if c.GracefulShutdownErrHandler == nil {
+		c.GracefulShutdownErrHandler = func(e error) { /* NOP */ }
 	}
 	// populate new SecureServer
 	return &SecureServer{
@@ -105,13 +120,14 @@ func NewSecureServer(c ServerConfig) (*SecureServer, error) {
 
 // ListenAndServe starts the secure server
 func (ss *SecureServer) ListenAndServe() {
+	willStopGracefully(ss.server, ss.gracefulnessTimeout, ss.gracefulShutdownErrHandler)
+
 	if ss.serveSSLFunc() {
 		ss.server.Addr = ss.httpsPort
 		ss.server.TLSConfig = &tls.Config{GetCertificate: ss.certMgr.GetCertificate}
 		go func() {
 			log.Printf("[sslmgr] serving https at %s", ss.httpsPort)
-			err := ss.server.ListenAndServeTLS("", "")
-			if err != nil {
+			if err := ss.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
 				log.Fatalf("[sslmgr] ListendAndServeTLS() failed with %s", err)
 			}
 		}()
@@ -120,10 +136,28 @@ func (ss *SecureServer) ListenAndServe() {
 		// some time for OS scheduler to start SSL thread
 		time.Sleep(time.Millisecond * 50)
 	}
+
 	ss.server.Addr = ss.httpPort
 	log.Printf("[sslmgr] serving http at %s", ss.httpPort)
-	err := ss.server.ListenAndServe()
-	if err != nil {
+	if err := ss.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("[sslmgr] ListenAndServe() failed with %s", err)
 	}
+}
+
+func willStopGracefully(srv *http.Server, timeout time.Duration, errHandler func(error)) {
+	gracefulStop := make(chan os.Signal)
+	signal.Notify(gracefulStop, syscall.SIGTERM)
+	signal.Notify(gracefulStop, syscall.SIGINT)
+
+	go func() {
+		<-gracefulStop
+		log.Print("[sslmgr] shutdown signal received, draining existent connections...")
+		ctx, cncl := context.WithTimeout(context.Background(), timeout)
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Printf("[sslmgr] server could not be shutdown gracefully: %s", err)
+			errHandler(err)
+		}
+		cncl()
+		log.Print("[sslmgr] server was closed successfully with no service interruptions")
+	}()
 }
