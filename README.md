@@ -25,19 +25,29 @@ ss.ListenAndServe()
 (Using the [certcache](https://godoc.org/github.com/adrianosela/certcache) library to define a cache)
 
 ```
-ss := sslmgr.NewSecureServer(sslmgr.ServerConfig{
-		Hostnames: []string{"yourhostname.com"},
-		Handler:   h,
-		HTTPPort:  ":80",
-		HTTPSPort: ":443",
-		ReadTimeout: 10 * time.Second(),
-		WriteTimeout: 10 * time.Second(),
-		IdleTimeout: 25 * time.Second(),
-		ServeSSLFunc: func() bool {
-			return strings.ToLower(os.Getenv("PROD")) == "true"
-		},
-		CertCache: certcache.NewFirestore(os.Getenv("FIREBASE_CREDS_PATH"), os.Getenv("FIREBASE_PROJ_ID")),
+ss, err := sslmgr.NewSecureServer(sslmgr.ServerConfig{
+	Hostnames: []string{os.Getenv("CN_FOR_CERTIFICATE")},
+	HTTPPort:  ":80",
+	HTTPSPort: ":443",
+	Handler:   h,
+	ServeSSLFunc: func() bool {
+		return strings.ToLower(os.Getenv("PROD")) == "true"
+	},
+	CertCache: certcache.NewLayered(
+		certcache.NewLogger(),
+		autocert.DirCache("."),
+	),
+	ReadTimeout:         5 * time.Second,
+	WriteTimeout:        5 * time.Second,
+	IdleTimeout:         25 * time.Second,
+	GracefulnessTimeout: 5 * time.Second,
+	GracefulShutdownErrHandler: func(e error) {
+		log.Fatal(e)
+	},
 })
+if err != nil {
+	log.Fatal(err)
+}
 
 ss.ListenAndServe()
 ```

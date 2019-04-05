@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/adrianosela/certcache"
 	"github.com/adrianosela/sslmgr"
@@ -31,6 +32,13 @@ func main() {
 			certcache.NewLogger(),
 			autocert.DirCache("."),
 		),
+		ReadTimeout:         5 * time.Second,
+		WriteTimeout:        5 * time.Second,
+		IdleTimeout:         25 * time.Second,
+		GracefulnessTimeout: 5 * time.Second,
+		GracefulShutdownErrHandler: func(e error) {
+			log.Fatal(e)
+		},
 	})
 	if err != nil {
 		log.Fatal(err)
