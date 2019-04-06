@@ -3,6 +3,7 @@ package sslmgr
 import (
 	"errors"
 	"net/http"
+	"syscall"
 	"testing"
 	"time"
 
@@ -91,6 +92,36 @@ func TestSecureServer(t *testing.T) {
 			})
 			So(ss, ShouldBeNil)
 			So(err, ShouldEqual, ErrNotAnInteger)
+		})
+	})
+	Convey("Test startGracefulStopHandler()", t, func() {
+		Convey("Test startGracefulStopHandler Does Not Panic", func() {
+			ss, err := NewSecureServer(ServerConfig{
+				Handler:   http.NotFoundHandler(),
+				Hostnames: []string{"yourdomain.io"},
+			})
+			So(ss, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			So(func() {
+				ss.startGracefulStopHandler(5*time.Second, func(e error) { /* NOP */ })
+				syscall.Signal(syscall.SIGINT).Signal()
+			}, ShouldNotPanic)
+		})
+	})
+	Convey("Test serveHTTPS()", t, func() {
+		Convey("Test serveHTTPS Does Not Panic", func() {
+			ss, err := NewSecureServer(ServerConfig{
+				Handler:   http.NotFoundHandler(),
+				Hostnames: []string{"yourdomain.io"},
+			})
+			So(ss, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			So(func() {
+				ss.testing = true
+				ss.serveHTTPS()
+				syscall.Signal(syscall.SIGINT).Signal()
+			}, ShouldNotPanic)
+			So(ss.server.Addr, ShouldEqual, ":443")
 		})
 	})
 }

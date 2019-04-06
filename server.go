@@ -27,6 +27,7 @@ type SecureServer struct {
 	httpPort                   string
 	gracefulnessTimeout        time.Duration
 	gracefulShutdownErrHandler func(error)
+	testing                    bool
 }
 
 // ServerConfig holds configuration to initialize a SecureServer.
@@ -74,7 +75,7 @@ type ServerConfig struct {
 	GracefulnessTimeout time.Duration
 
 	// GracefulShutdownErrHandler is called to handle the event of an error during
-	// a gracefull shutdown (accept no more connections, and wait for existing 
+	// a gracefull shutdown (accept no more connections, and wait for existing
 	// ones to finish within the GracefulnessTimeout)
 	// Default value is a NOP
 	GracefulShutdownErrHandler func(error)
@@ -172,21 +173,10 @@ func NewSecureServer(c ServerConfig) (*SecureServer, error) {
 
 // ListenAndServe starts the secure server
 func (ss *SecureServer) ListenAndServe() {
-	willStopGracefully(ss.server, ss.gracefulnessTimeout, ss.gracefulShutdownErrHandler)
+	ss.startGracefulStopHandler(ss.gracefulnessTimeout, ss.gracefulShutdownErrHandler)
 
 	if ss.serveSSLFunc() {
-		ss.server.Addr = ss.httpsPort
-		ss.server.TLSConfig = &tls.Config{GetCertificate: ss.certMgr.GetCertificate}
-		go func() {
-			log.Printf("[sslmgr] serving https at %s", ss.httpsPort)
-			if err := ss.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-				log.Fatalf("[sslmgr] ListendAndServeTLS() failed with %s", err)
-			}
-		}()
-		// allow autocert handler Let's Encrypt auth callbacks over HTTP
-		ss.server.Handler = ss.certMgr.HTTPHandler(ss.server.Handler)
-		// some time for OS scheduler to start SSL thread (before changing http.Server port)
-		time.Sleep(time.Millisecond * 50)
+		ss.serveHTTPS()
 	}
 
 	ss.server.Addr = ss.httpPort
@@ -196,7 +186,22 @@ func (ss *SecureServer) ListenAndServe() {
 	}
 }
 
-func willStopGracefully(srv *http.Server, timeout time.Duration, errHandler func(error)) {
+func (ss *SecureServer) serveHTTPS() {
+	ss.server.Addr = ss.httpsPort
+	ss.server.TLSConfig = &tls.Config{GetCertificate: ss.certMgr.GetCertificate}
+	go func() {
+		log.Printf("[sslmgr] serving https at %s", ss.httpsPort)
+		if err := ss.server.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("[sslmgr] ListendAndServeTLS() failed with %s", err)
+		}
+	}()
+	// allow autocert handler Let's Encrypt auth callbacks over HTTP
+	ss.server.Handler = ss.certMgr.HTTPHandler(ss.server.Handler)
+	// some time for OS scheduler to start SSL thread (before changing http.Server port)
+	time.Sleep(time.Millisecond * 50)
+}
+
+func (ss *SecureServer) startGracefulStopHandler(timeout time.Duration, errHandler func(error)) {
 	gracefulStop := make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM)
 	signal.Notify(gracefulStop, syscall.SIGINT)
@@ -205,11 +210,11 @@ func willStopGracefully(srv *http.Server, timeout time.Duration, errHandler func
 		<-gracefulStop
 		log.Print("[sslmgr] shutdown signal received, draining existent connections...")
 		ctx, cncl := context.WithTimeout(context.Background(), timeout)
-		if err := srv.Shutdown(ctx); err != nil {
+		defer cncl()
+		if err := ss.server.Shutdown(ctx); err != nil {
 			log.Printf("[sslmgr] server could not be shutdown gracefully: %s", err)
 			errHandler(err)
 		}
-		cncl()
 		log.Print("[sslmgr] server was closed successfully with no service interruptions")
 	}()
 }
