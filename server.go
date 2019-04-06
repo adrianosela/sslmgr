@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -70,11 +71,17 @@ func NewSecureServer(c ServerConfig) (*SecureServer, error) {
 		c.CertCache = autocert.DirCache(".")
 	}
 	// port definitions cant be empty
-	if c.HTTPSPort == "" || !strings.HasPrefix(c.HTTPSPort, ":") {
+	if c.HTTPSPort == "" {
 		c.HTTPSPort = ":443"
 	}
-	if c.HTTPPort == "" || !strings.HasPrefix(c.HTTPPort, ":") {
+	if !strings.HasPrefix(c.HTTPSPort, ":") {
+		c.HTTPSPort = fmt.Sprintf(":%s", c.HTTPSPort)
+	}
+	if c.HTTPPort == "" {
 		c.HTTPPort = ":80"
+	}
+	if !strings.HasPrefix(c.HTTPPort, ":") {
+		c.HTTPPort = fmt.Sprintf(":%s", c.HTTPPort)
 	}
 	// sensible timeouts
 	if c.ReadTimeout == time.Duration(0) {
