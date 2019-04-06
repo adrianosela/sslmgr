@@ -145,7 +145,7 @@ func NewSecureServer(c ServerConfig) (*SecureServer, error) {
 			return true
 		}
 	}
-	// simply log failure error if gradeful shutdown fails
+	// NOP if graceful shutdown fails
 	if c.GracefulShutdownErrHandler == nil {
 		c.GracefulShutdownErrHandler = func(e error) { /* NOP */ }
 	}
@@ -185,7 +185,7 @@ func (ss *SecureServer) ListenAndServe() {
 		}()
 		// allow autocert handler Let's Encrypt auth callbacks over HTTP
 		ss.server.Handler = ss.certMgr.HTTPHandler(ss.server.Handler)
-		// some time for OS scheduler to start SSL thread
+		// some time for OS scheduler to start SSL thread (before changing http.Server port)
 		time.Sleep(time.Millisecond * 50)
 	}
 
