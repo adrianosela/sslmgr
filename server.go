@@ -128,16 +128,16 @@ func NewSecureServer(c ServerConfig) (*SecureServer, error) {
 		serveSSLFunc:               c.ServeSSLFunc,
 		gracefulShutdownErrHandler: c.GracefulShutdownErrHandler,
 	}
-	if err := ss.SetPorts(c.HTTPPort, c.HTTPSPort); err != nil {
+	if err := ss.setPorts(c.HTTPPort, c.HTTPSPort); err != nil {
 		return nil, err
 	}
-	ss.SetTimeouts(c.ReadTimeout, c.WriteTimeout, c.IdleTimeout, c.GracefulnessTimeout)
+	ss.setTimeouts(c.ReadTimeout, c.WriteTimeout, c.IdleTimeout, c.GracefulnessTimeout)
 	return ss, nil
 }
 
-// SetPorts sets the http and https ports on the server
+// setPorts sets the http and https ports on the server
 // Note: port definitions cannot be empty nor non numerical strings
-func (ss *SecureServer) SetPorts(httpPort, httpsPort string) error {
+func (ss *SecureServer) setPorts(httpPort, httpsPort string) error {
 	if httpsPort == "" {
 		httpsPort = ":443"
 	}
@@ -161,8 +161,8 @@ func (ss *SecureServer) SetPorts(httpPort, httpsPort string) error {
 	return nil
 }
 
-// SetTimeouts sets server operation and shutdown timeouts
-func (ss *SecureServer) SetTimeouts(read, write, idle, gracefulness time.Duration) {
+// setTimeouts sets server operation and shutdown timeouts
+func (ss *SecureServer) setTimeouts(read, write, idle, gracefulness time.Duration) {
 	if read == time.Duration(0) {
 		read = 5 * time.Second
 	}
