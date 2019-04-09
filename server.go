@@ -95,8 +95,16 @@ var (
 	ErrNotAnInteger = errors.New("port number must be a numerical string")
 )
 
-// NewSecureServer initializes a new secure server
-func NewSecureServer(c ServerConfig) (*SecureServer, error) {
+// NewSecureServer returns a SecureServer with default configuration
+func NewSecureServer(h http.Handler, hostnames ...string) (*SecureServer, error) {
+	return NewServer(ServerConfig{
+		Handler:   h,
+		Hostnames: hostnames,
+	})
+}
+
+// NewServer returns a SecureServer with the given config applied
+func NewServer(c ServerConfig) (*SecureServer, error) {
 	// check required fields
 	if c.Hostnames == nil || len(c.Hostnames) < 1 {
 		return nil, ErrNoHostname

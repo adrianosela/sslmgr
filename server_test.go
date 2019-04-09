@@ -12,15 +12,22 @@ import (
 
 func TestSecureServer(t *testing.T) {
 	Convey("Test NewSecureServer()", t, func() {
+		Convey("Test Required Fields Suffice", func() {
+			ss, err := NewSecureServer(http.NotFoundHandler(), "yourdomain.io")
+			So(ss, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+		})
+	})
+	Convey("Test NewServer()", t, func() {
 		Convey("Test Required Field - Hostnames nil", func() {
-			ss, err := NewSecureServer(ServerConfig{
+			ss, err := NewServer(ServerConfig{
 				Handler: http.NotFoundHandler(),
 			})
 			So(ss, ShouldBeNil)
 			So(err, ShouldEqual, ErrNoHostname)
 		})
 		Convey("Test Required Field - Hostnames empty", func() {
-			ss, err := NewSecureServer(ServerConfig{
+			ss, err := NewServer(ServerConfig{
 				Handler:   http.NotFoundHandler(),
 				Hostnames: []string{},
 			})
@@ -28,14 +35,14 @@ func TestSecureServer(t *testing.T) {
 			So(err, ShouldEqual, ErrNoHostname)
 		})
 		Convey("Test Required Field - Handler", func() {
-			ss, err := NewSecureServer(ServerConfig{
+			ss, err := NewServer(ServerConfig{
 				Hostnames: []string{"yourdomain.io"},
 			})
 			So(ss, ShouldBeNil)
 			So(err, ShouldEqual, ErrNoHandler)
 		})
 		Convey("Test Required Fields Suffice", func() {
-			ss, err := NewSecureServer(ServerConfig{
+			ss, err := NewServer(ServerConfig{
 				Handler:   http.NotFoundHandler(),
 				Hostnames: []string{"yourdomain.io"},
 			})
@@ -43,7 +50,7 @@ func TestSecureServer(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 		Convey("Test Default Values Are Applied", func() {
-			ss, err := NewSecureServer(ServerConfig{
+			ss, err := NewServer(ServerConfig{
 				Handler:   http.NotFoundHandler(),
 				Hostnames: []string{"yourdomain.io"},
 			})
@@ -64,7 +71,7 @@ func TestSecureServer(t *testing.T) {
 			}, ShouldNotPanic)
 		})
 		Convey("Test Port Address Correction", func() {
-			ss, err := NewSecureServer(ServerConfig{
+			ss, err := NewServer(ServerConfig{
 				Handler:   http.NotFoundHandler(),
 				Hostnames: []string{"yourdomain.io"},
 				HTTPPort:  "80",
@@ -76,7 +83,7 @@ func TestSecureServer(t *testing.T) {
 			So(ss.httpsPort, ShouldEqual, ":443")
 		})
 		Convey("Test HTTP Port Address Failure", func() {
-			ss, err := NewSecureServer(ServerConfig{
+			ss, err := NewServer(ServerConfig{
 				Handler:   http.NotFoundHandler(),
 				Hostnames: []string{"yourdomain.io"},
 				HTTPPort:  "not an int",
@@ -85,7 +92,7 @@ func TestSecureServer(t *testing.T) {
 			So(err, ShouldEqual, ErrNotAnInteger)
 		})
 		Convey("Test HTTPS Port Address Failure", func() {
-			ss, err := NewSecureServer(ServerConfig{
+			ss, err := NewServer(ServerConfig{
 				Handler:   http.NotFoundHandler(),
 				Hostnames: []string{"yourdomain.io"},
 				HTTPSPort: "not an int",
@@ -96,7 +103,7 @@ func TestSecureServer(t *testing.T) {
 	})
 	Convey("Test startGracefulStopHandler()", t, func() {
 		Convey("Test startGracefulStopHandler Does Not Panic", func() {
-			ss, err := NewSecureServer(ServerConfig{
+			ss, err := NewServer(ServerConfig{
 				Handler:   http.NotFoundHandler(),
 				Hostnames: []string{"yourdomain.io"},
 			})
@@ -110,7 +117,7 @@ func TestSecureServer(t *testing.T) {
 	})
 	Convey("Test serveHTTPS()", t, func() {
 		Convey("Test serveHTTPS Does Not Panic", func() {
-			ss, err := NewSecureServer(ServerConfig{
+			ss, err := NewServer(ServerConfig{
 				Handler:   http.NotFoundHandler(),
 				Hostnames: []string{"yourdomain.io"},
 			})
