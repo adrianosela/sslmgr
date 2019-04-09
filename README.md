@@ -10,7 +10,7 @@
 #### With Default Values:
 
 ```
-ss, err := sslmgr.NewSecureServer(handler, "yourhostname.com")
+ss, err := sslmgr.NewServer(handler, "yourhostname.com")
 if err != nil {
 	log.Fatal(err)
 }
