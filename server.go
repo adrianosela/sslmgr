@@ -221,12 +221,11 @@ func (ss *SecureServer) serveHTTPS() {
 
 func (ss *SecureServer) startGracefulStopHandler(timeout time.Duration, errHandler func(error)) {
 	gracefulStop := make(chan os.Signal)
-	signal.Notify(gracefulStop, syscall.SIGTERM)
-	signal.Notify(gracefulStop, syscall.SIGINT)
+	signal.Notify(gracefulStop, syscall.SIGTERM, syscall.SIGINT)
 
 	go func() {
 		<-gracefulStop
-		log.Print("[sslmgr] shutdown signal received, draining existent connections...")
+		log.Print("[sslmgr] shutdown signal received, draining existing connections...")
 		ctx, cncl := context.WithTimeout(context.Background(), timeout)
 		defer cncl()
 		if err := ss.server.Shutdown(ctx); err != nil {
