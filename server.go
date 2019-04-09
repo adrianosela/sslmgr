@@ -75,7 +75,7 @@ type ServerConfig struct {
 	GracefulnessTimeout time.Duration
 
 	// GracefulShutdownErrHandler is called to handle the event of an error during
-	// a gracefull shutdown (accept no more connections, and wait for existing
+	// a graceful shutdown (accept no more connections, and wait for existing
 	// ones to finish within the GracefulnessTimeout)
 	// Default value is a NOP
 	GracefulShutdownErrHandler func(error)
