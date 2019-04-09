@@ -18,7 +18,7 @@ import (
 )
 
 // SecureServer is a server which abstracts away acme/autocert's
-// certificate manager
+// certificate manager and server configuration
 type SecureServer struct {
 	server                     *http.Server
 	certMgr                    *autocert.Manager

@@ -10,11 +10,10 @@
 #### With Default Values:
 
 ```
-ss := sslmgr.NewSecureServer(sslmgr.ServerConfig{
-		Hostnames: []string{"yourhostname.com"},
-		Handler:   h,
-})
-
+ss, err := sslmgr.NewSecureServer(handler, "yourhostname.com")
+if err != nil {
+	log.Fatal(err)
+}
 ss.ListenAndServe()
 ```
 

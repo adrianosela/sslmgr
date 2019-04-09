@@ -20,7 +20,7 @@ func main() {
 		w.Write([]byte("Im alive!"))
 	})
 
-	ss, err := sslmgr.NewSecureServer(sslmgr.ServerConfig{
+	ss, err := sslmgr.NewServer(sslmgr.ServerConfig{
 		Hostnames: []string{os.Getenv("CN_FOR_CERTIFICATE")},
 		HTTPPort:  ":80",
 		HTTPSPort: ":443",
