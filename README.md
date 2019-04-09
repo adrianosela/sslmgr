@@ -10,7 +10,7 @@
 #### With Default Values:
 
 ```
-ss, err := sslmgr.NewServer(handler, "yourhostname.com")
+ss, err := sslmgr.NewSecureServer(handler, "yourhostname.com")
 if err != nil {
 	log.Fatal(err)
 }
@@ -25,7 +25,7 @@ ss.ListenAndServe()
 (Using the [certcache](https://godoc.org/github.com/adrianosela/certcache) library to define a cache)
 
 ```
-ss, err := sslmgr.NewSecureServer(sslmgr.ServerConfig{
+ss, err := sslmgr.NewServer(sslmgr.ServerConfig{
 	Hostnames: []string{os.Getenv("CN_FOR_CERTIFICATE")},
 	HTTPPort:  ":80",
 	HTTPSPort: ":443",
