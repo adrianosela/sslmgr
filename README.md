@@ -4,6 +4,7 @@
 [![Documentation](https://godoc.org/github.com/adrianosela/sslmgr?status.svg)](https://godoc.org/github.com/adrianosela/sslmgr)
 [![GitHub issues](https://img.shields.io/github/issues/adrianosela/sslmgr.svg)](https://github.com/adrianosela/sslmgr/issues)
 [![license](https://img.shields.io/github/license/adrianosela/sslmgr.svg)](https://github.com/adrianosela/certcache/blob/master/LICENSE)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#security)
 
 
 #### With Default Values:
