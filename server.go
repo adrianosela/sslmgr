@@ -108,38 +108,6 @@ func NewSecureServer(c ServerConfig) (*SecureServer, error) {
 	if c.CertCache == nil {
 		c.CertCache = autocert.DirCache(".")
 	}
-	// port definitions cant be empty or non numerical strings
-	if c.HTTPSPort == "" {
-		c.HTTPSPort = ":443"
-	}
-	if _, err := strconv.Atoi(strings.TrimPrefix(c.HTTPSPort, ":")); err != nil {
-		return nil, ErrNotAnInteger
-	}
-	if !strings.HasPrefix(c.HTTPSPort, ":") {
-		c.HTTPSPort = fmt.Sprintf(":%s", c.HTTPSPort)
-	}
-	if c.HTTPPort == "" {
-		c.HTTPPort = ":80"
-	}
-	if _, err := strconv.Atoi(strings.TrimPrefix(c.HTTPPort, ":")); err != nil {
-		return nil, ErrNotAnInteger
-	}
-	if !strings.HasPrefix(c.HTTPPort, ":") {
-		c.HTTPPort = fmt.Sprintf(":%s", c.HTTPPort)
-	}
-	// sensible timeouts
-	if c.ReadTimeout == time.Duration(0) {
-		c.ReadTimeout = 5 * time.Second
-	}
-	if c.WriteTimeout == time.Duration(0) {
-		c.WriteTimeout = 5 * time.Second
-	}
-	if c.IdleTimeout == time.Duration(0) {
-		c.IdleTimeout = 25 * time.Second
-	}
-	if c.GracefulnessTimeout == time.Duration(0) {
-		c.GracefulnessTimeout = 5 * time.Second
-	}
 	// serve SSL by default
 	if c.ServeSSLFunc == nil {
 		c.ServeSSLFunc = func() bool {
@@ -150,25 +118,67 @@ func NewSecureServer(c ServerConfig) (*SecureServer, error) {
 	if c.GracefulShutdownErrHandler == nil {
 		c.GracefulShutdownErrHandler = func(e error) { /* NOP */ }
 	}
-	// populate new SecureServer
-	return &SecureServer{
-		server: &http.Server{
-			ReadTimeout:  c.ReadTimeout,
-			WriteTimeout: c.WriteTimeout,
-			IdleTimeout:  c.IdleTimeout,
-			Handler:      c.Handler,
-		},
+	ss := &SecureServer{
+		server: &http.Server{Handler: c.Handler},
 		certMgr: &autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(c.Hostnames...),
 			Cache:      c.CertCache,
 		},
 		serveSSLFunc:               c.ServeSSLFunc,
-		httpPort:                   c.HTTPPort,
-		httpsPort:                  c.HTTPSPort,
-		gracefulnessTimeout:        c.GracefulnessTimeout,
 		gracefulShutdownErrHandler: c.GracefulShutdownErrHandler,
-	}, nil
+	}
+	if err := ss.SetPorts(c.HTTPPort, c.HTTPSPort); err != nil {
+		return nil, err
+	}
+	ss.SetTimeouts(c.ReadTimeout, c.WriteTimeout, c.IdleTimeout, c.GracefulnessTimeout)
+	return ss, nil
+}
+
+// SetPorts sets the http and https ports on the server
+// Note: port definitions cannot be empty nor non numerical strings
+func (ss *SecureServer) SetPorts(httpPort, httpsPort string) error {
+	if httpsPort == "" {
+		httpsPort = ":443"
+	}
+	if _, err := strconv.Atoi(strings.TrimPrefix(httpsPort, ":")); err != nil {
+		return ErrNotAnInteger
+	}
+	if !strings.HasPrefix(httpsPort, ":") {
+		httpsPort = fmt.Sprintf(":%s", httpsPort)
+	}
+	if httpPort == "" {
+		httpPort = ":80"
+	}
+	if _, err := strconv.Atoi(strings.TrimPrefix(httpPort, ":")); err != nil {
+		return ErrNotAnInteger
+	}
+	if !strings.HasPrefix(httpPort, ":") {
+		httpPort = fmt.Sprintf(":%s", httpPort)
+	}
+	ss.httpPort = httpPort
+	ss.httpsPort = httpsPort
+	return nil
+}
+
+// SetTimeouts sets server operation and shutdown timeouts
+func (ss *SecureServer) SetTimeouts(read, write, idle, gracefulness time.Duration) {
+	if read == time.Duration(0) {
+		read = 5 * time.Second
+	}
+	if write == time.Duration(0) {
+		write = 5 * time.Second
+	}
+	if idle == time.Duration(0) {
+		idle = 25 * time.Second
+	}
+	if gracefulness == time.Duration(0) {
+		gracefulness = 5 * time.Second
+	}
+	ss.server.ReadTimeout = read
+	ss.server.WriteTimeout = write
+	ss.server.IdleTimeout = idle
+	ss.gracefulnessTimeout = gracefulness
 }
 
 // ListenAndServe starts the secure server
