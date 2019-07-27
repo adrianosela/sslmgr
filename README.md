@@ -6,6 +6,9 @@
 [![license](https://img.shields.io/github/license/adrianosela/sslmgr.svg)](https://github.com/adrianosela/sslmgr/blob/master/LICENSE)
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go#security)
 
+#### Prerequisites:
+
+* Your server must be reachable through the provided domain name, this is how LetsEncrypt verifies domain ownership and grants your server a trusted certificate
 
 #### With Default Values:
 
